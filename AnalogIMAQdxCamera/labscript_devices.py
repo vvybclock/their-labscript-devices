@@ -70,7 +70,91 @@ class AnalogTrigger(AnalogOut):
                                  'to %s must be \'trigger\', not \'%s\''%(self.name, repr(device.connection)))
         AnalogOut.add_device(self, device)
 
-class AnalogIMAQdxCamera(TriggerableDevice):
+class AnalogTriggerableDevice(Device):
+    trigger_edge_type = 'rising'
+    minimum_recovery_time = 0
+    # A class devices should inherit if they do
+    # not require a pseudoclock, but do require a trigger.
+    # This enables them to have a Trigger device as a parent
+    
+    @set_passed_properties(property_names = {})
+    def __init__(self, name, parent_device, connection, parentless=False, **kwargs):
+
+        if None in [parent_device, connection] and not parentless:
+            raise LabscriptError('No parent specified. If this device does not require a parent, set parentless=True')
+        if isinstance(parent_device, Trigger):
+            if self.trigger_edge_type != parent_device.trigger_edge_type:
+                raise LabscriptError('Trigger edge type for %s is \'%s\', ' % (name, self.trigger_edge_type) + 
+                                      'but existing Trigger object %s ' % parent_device.name +
+                                      'has edge type \'%s\'' % parent_device.trigger_edge_type)
+            self.trigger_device = parent_device
+        elif parent_device is not None:
+            # Instantiate a trigger object to be our parent:
+            self.trigger_device = AnalogTrigger(name + '_trigger', parent_device, connection, self.trigger_edge_type)
+            parent_device = self.trigger_device
+            connection = 'trigger'
+            
+        self.__triggers = []
+        Device.__init__(self, name, parent_device, connection, **kwargs)
+
+    def trigger(self, t, duration):
+        """Request parent trigger device to produce a trigger at time t with given
+        duration."""
+        # Only ask for a trigger if one has not already been requested by another device
+        # attached to the same trigger:
+        already_requested = False
+        for other_device in self.trigger_device.child_devices:
+            if other_device is not self:
+                for other_t, other_duration in other_device.__triggers:
+                    if t == other_t and duration == other_duration:
+                        already_requested = True
+        if not already_requested:
+            self.trigger_device.trigger(t, duration)
+
+        # Check for triggers too close together (check for overlapping triggers already
+        # performed in Trigger.trigger()):
+        start = t
+        end = t + duration
+        for other_t, other_duration in self.__triggers:
+            other_start = other_t
+            other_end = other_t + other_duration
+            if (
+                abs(other_start - end) < self.minimum_recovery_time
+                or abs(other_end - start) < self.minimum_recovery_time
+            ):
+                msg = """%s %s has two triggers closer together than the minimum
+                    recovery time: one at t = %fs for %fs, and another at t = %fs for
+                    %fs. The minimum recovery time is %fs."""
+                msg = msg % (
+                    self.description,
+                    self.name,
+                    t,
+                    duration,
+                    start,
+                    duration,
+                    self.minimum_recovery_time,
+                )
+                raise ValueError(dedent(msg))
+
+        self.__triggers.append([t, duration])
+
+    def do_checks(self):
+        # Check that all devices sharing a trigger device have triggers when we have triggers:
+        for device in self.trigger_device.child_devices:
+            if device is not self:
+                for trigger in self.__triggers:
+                    if trigger not in device.__triggers:
+                        start, duration = trigger
+                        raise LabscriptError('TriggerableDevices %s and %s share a trigger. ' % (self.name, device.name) + 
+                                             '%s has a trigger at %fs for %fs, ' % (self.name, start, duration) +
+                                             'but there is no matching trigger for %s. ' % device.name +
+                                             'Devices sharing a trigger must have identical trigger times and durations.')
+
+    def generate_code(self, hdf5_file):
+        self.do_checks()
+        Device.generate_code(self, hdf5_file)
+
+class AnalogIMAQdxCamera(AnalogTriggerableDevice):
     description = 'IMAQdx Camera'
 
     @set_passed_properties(
