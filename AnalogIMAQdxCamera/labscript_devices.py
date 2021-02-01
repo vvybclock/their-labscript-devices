@@ -18,8 +18,8 @@ import labscript_utils.h5_lock
 import h5py
 
 ### Define AnalogTrigger class here for replacing Trigger(DigitalOut) instance.
-class Trigger(DigitalOut):
-    description = 'trigger device'
+class AnalogTrigger(AnalogOut):
+    description = 'analog trigger device'
     allowed_states = {1:'high', 0:'low'}
     allowed_children = [TriggerableDevice]
 
@@ -27,7 +27,9 @@ class Trigger(DigitalOut):
     def __init__(self, name, parent_device, connection, trigger_edge_type='rising',
                  **kwargs):
 
-        DigitalOut.__init__(self,name,parent_device,connection, **kwargs)
+        AnalogOut.__init__(self,name,parent_device,connection, **kwargs)
+        def go_high():
+            pass
         self.trigger_edge_type = trigger_edge_type
         if self.trigger_edge_type == 'rising':
             self.enable = self.go_high
