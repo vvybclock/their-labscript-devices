@@ -17,8 +17,9 @@ import numpy as np
 import labscript_utils.h5_lock
 import h5py
 
+### Define AnalogTrigger class here for replacing Trigger(DigitalOut) instance.
 
-class IMAQdxCamera(TriggerableDevice):
+class AnalogIMAQdxCamera(TriggerableDevice):
     description = 'IMAQdx Camera'
 
     @set_passed_properties(
@@ -167,6 +168,8 @@ class IMAQdxCamera(TriggerableDevice):
         self.camera_attributes = camera_attributes
         self.manual_mode_camera_attributes = manual_mode_camera_attributes
         self.exposures = []
+        ### TriggerableDevice is where the Trigger class is instantiated. 
+        ### The Trigger class 
         TriggerableDevice.__init__(self, name, parent_device, connection, **kwargs)
 
     def expose(self, t, name, frametype='frame', trigger_duration=None):
