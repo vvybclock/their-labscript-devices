@@ -18,6 +18,53 @@ import labscript_utils.h5_lock
 import h5py
 
 ### Define AnalogTrigger class here for replacing Trigger(DigitalOut) instance.
+class Trigger(DigitalOut):
+    description = 'trigger device'
+    allowed_states = {1:'high', 0:'low'}
+    allowed_children = [TriggerableDevice]
+
+    @set_passed_properties(property_names = {})
+    def __init__(self, name, parent_device, connection, trigger_edge_type='rising',
+                 **kwargs):
+
+        DigitalOut.__init__(self,name,parent_device,connection, **kwargs)
+        self.trigger_edge_type = trigger_edge_type
+        if self.trigger_edge_type == 'rising':
+            self.enable = self.go_high
+            self.disable = self.go_low
+            self.allowed_states = {1:'enabled', 0:'disabled'}
+        elif self.trigger_edge_type == 'falling':
+            self.enable = self.go_low
+            self.disable = self.go_high
+            self.allowed_states = {1:'disabled', 0:'enabled'}
+        else:
+            raise ValueError('trigger_edge_type must be \'rising\' or \'falling\', not \'%s\'.'%trigger_edge_type)
+        # A list of the times this trigger has been asked to trigger:
+        self.triggerings = []
+        
+        
+    def trigger(self, t, duration):
+        assert duration > 0, "Negative or zero trigger duration given"
+        if t != self.t0 and self.t0 not in self.instructions:
+            self.disable(self.t0)
+        
+        start = t
+        end = t + duration
+        for other_start, other_duration in self.triggerings:
+            other_end = other_start + other_duration
+            # Check for overlapping exposures:
+            if not (end < other_start or start > other_end):
+                raise LabscriptError('%s %s has two overlapping triggerings: ' %(self.description, self.name) + \
+                                     'one at t = %fs for %fs, and another at t = %fs for %fs.'%(start, duration, other_start, other_duration))
+        self.enable(t)
+        self.disable(round(t + duration,10))
+        self.triggerings.append((t, duration))
+
+    def add_device(self, device):
+        if not device.connection == 'trigger':
+            raise LabscriptError('The \'connection\' string of device %s '%device.name + 
+                                 'to %s must be \'trigger\', not \'%s\''%(self.name, repr(device.connection)))
+        DigitalOut.add_device(self, device)
 
 class AnalogIMAQdxCamera(TriggerableDevice):
     description = 'IMAQdx Camera'
