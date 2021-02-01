@@ -26,11 +26,11 @@ class AnalogTriggerableDevice(Device):
     # This enables them to have a Trigger device as a parent
     
     @set_passed_properties(property_names = {})
-    def __init__(self, name, parent_device, connection, parentless=False, **kwargs):
+    def __init__(self, name, parent_device, connection, voltage, parentless=False, **kwargs):
 
         if None in [parent_device, connection] and not parentless:
             raise LabscriptError('No parent specified. If this device does not require a parent, set parentless=True')
-        if isinstance(parent_device, Trigger):
+        if isinstance(parent_device, AnalogTrigger):
             if self.trigger_edge_type != parent_device.trigger_edge_type:
                 raise LabscriptError('Trigger edge type for %s is \'%s\', ' % (name, self.trigger_edge_type) + 
                                       'but existing Trigger object %s ' % parent_device.name +
@@ -38,7 +38,7 @@ class AnalogTriggerableDevice(Device):
             self.trigger_device = parent_device
         elif parent_device is not None:
             # Instantiate a trigger object to be our parent:
-            self.trigger_device = AnalogTrigger(name + '_trigger', parent_device, connection, self.trigger_edge_type)
+            self.trigger_device = AnalogTrigger(name + '_trigger', parent_device, connection, voltage, self.trigger_edge_type)
             parent_device = self.trigger_device
             connection = 'trigger'
             
@@ -182,6 +182,7 @@ class AnalogIMAQdxCamera(AnalogTriggerableDevice):
         parent_device,
         connection,
         serial_number,
+        voltage=1,
         orientation=None,
         trigger_edge_type='rising',
         trigger_duration=None,
@@ -308,7 +309,7 @@ class AnalogIMAQdxCamera(AnalogTriggerableDevice):
         self.exposures = []
         ### TriggerableDevice is where the Trigger class is instantiated. 
         ### The Trigger class 
-        TriggerableDevice.__init__(self, name, parent_device, connection, **kwargs)
+        AnalogTriggerableDevice.__init__(self, name, parent_device, connection,voltage, **kwargs)
 
     def expose(self, t, name, frametype='frame', trigger_duration=None):
         """Request an exposure at the given time. A trigger will be produced by the
