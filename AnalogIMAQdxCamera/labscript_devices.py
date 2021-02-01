@@ -12,7 +12,7 @@
 #####################################################################
 import sys
 from labscript_utils import dedent
-from labscript import TriggerableDevice, set_passed_properties
+from labscript import TriggerableDevice, set_passed_properties, AnalogOut
 import numpy as np
 import labscript_utils.h5_lock
 import h5py
@@ -28,16 +28,18 @@ class AnalogTrigger(AnalogOut):
                  **kwargs):
 
         AnalogOut.__init__(self,name,parent_device,connection, **kwargs)
-        def go_high():
+        def go_high_analog():
+            pass
+        def go_low_analog():
             pass
         self.trigger_edge_type = trigger_edge_type
         if self.trigger_edge_type == 'rising':
-            self.enable = self.go_high
-            self.disable = self.go_low
+            self.enable = self.go_high_analog
+            self.disable = self.go_low_analog
             self.allowed_states = {1:'enabled', 0:'disabled'}
         elif self.trigger_edge_type == 'falling':
-            self.enable = self.go_low
-            self.disable = self.go_high
+            self.enable = self.go_low_analog
+            self.disable = self.go_high_analog
             self.allowed_states = {1:'disabled', 0:'enabled'}
         else:
             raise ValueError('trigger_edge_type must be \'rising\' or \'falling\', not \'%s\'.'%trigger_edge_type)
@@ -66,7 +68,7 @@ class AnalogTrigger(AnalogOut):
         if not device.connection == 'trigger':
             raise LabscriptError('The \'connection\' string of device %s '%device.name + 
                                  'to %s must be \'trigger\', not \'%s\''%(self.name, repr(device.connection)))
-        DigitalOut.add_device(self, device)
+        AnalogOut.add_device(self, device)
 
 class AnalogIMAQdxCamera(TriggerableDevice):
     description = 'IMAQdx Camera'
