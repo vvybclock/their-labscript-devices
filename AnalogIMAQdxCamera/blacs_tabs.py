@@ -109,7 +109,7 @@ class ImageReceiver(ZMQServer):
 class IMAQdxCameraTab(DeviceTab):
     # Subclasses may override this if all they do is replace the worker class with a
     # different one:
-    worker_class = 'labscript_devices.IMAQdxCamera.blacs_workers.IMAQdxCameraWorker' 
+    worker_class = 'labscript_devices.AnalogIMAQdxCamera.blacs_workers.IMAQdxCameraWorker' 
     # Subclasses may override this to False if camera attributes should be set every
     # shot even if the same values have previously been set:
     use_smart_programming = True
