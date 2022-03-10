@@ -546,7 +546,23 @@ class NI_DAQmxAcquisitionWorker(Worker):
             self.stop_task()
         self.buffered_mode = False
         self.logger.info('transitioning to manual mode, task stopped')
-        self.start_task(self.manual_mode_chans, self.manual_mode_rate)
+
+        YBCLOCK_HACK_RETRIES = 5
+        YBCLOCK_HACK_COUNTER = 0
+        YBCLOCK_HACK_FILE_LOCATION = r'c:\users\boris\anaconda3\envs\ybclock\lib\site-packages\labscript_devices\NI_DAQmx\blacs_workers.py'
+        print(f"YBCLOCK HACK: See Line 553 {YBCLOCK_HACK_FILE_LOCATION}")
+        while YBCLOCK_HACK_COUNTER < YBCLOCK_HACK_RETRIES:
+            try:
+                self.start_task(self.manual_mode_chans, self.manual_mode_rate)
+                YBCLOCK_HACK_COUNTER = YBCLOCK_HACK_RETRIES
+                print("YBCLOCK HACK: Success!")
+            except Exception as e:
+                print(f"YBCLOCK HACK: Attempting to rerun command: Try # {YBCLOCK_HACK_COUNTER}")
+                print(f"Error was:: {e}")
+                YBCLOCK_HACK_COUNTER += 1
+                import time
+                time.sleep(0.1)
+
 
         if abort:
             self.acquired_data = None
