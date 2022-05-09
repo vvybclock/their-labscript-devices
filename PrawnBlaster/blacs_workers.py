@@ -56,6 +56,13 @@ class PrawnBlasterWorker(Worker):
         self.started = False
 
         self.prawnblaster = serial.Serial(self.com_port, 115200, timeout=1)
+
+        old_write = self.prawnblaster.write
+        def new_write(self,*args,**kwargs):
+            old_write(*args,**kwargs)
+            print(*args,**kwargs)
+
+        self.prawnblaster.write = new_write.__get__(self.prawnblaster, serial.Serial)
         self.check_status()
 
         # configure number of pseudoclocks
@@ -330,7 +337,7 @@ class PrawnBlasterWorker(Worker):
 
         # Start in software:
         self.logger.info("sending start")
-        self.prawnblaster.write(b"start\r\n")
+        self.prawnblaster.write(b"hwstart\r\n")
         response = self.prawnblaster.readline().decode()
         assert response == "ok\r\n", f"PrawnBlaster said '{response}', expected 'ok'"
 
